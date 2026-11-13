@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CSV整形ツール | 売上表・名簿のCSVをブラウザだけで整える【ポートフォリオ用サンプル】</title>
+  <meta name="description" content="CSVを読み込み、列の並べ替え・全角半角の統一・重複削除・日付形式の統一をしてダウンロードできるツール（ポートフォリオ用サンプル。データは外部に送信しません）。">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">本文へスキップ</a>
+
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="header__inner container">
+      <p class="logo">
+        <svg class="logo__mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+          <rect width="28" height="28" rx="7" fill="currentColor"/>
+          <path d="M7 9h14M7 14h14M7 19h9" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+        <span>CSV整形ツール</span>
+      </p>
+      <p class="header__note">データはこのパソコンの中だけで処理し、外部には送信しません</p>
+    </div>
+  </header>
+
+  <main id="main" class="container main">
+    <section class="intro" aria-labelledby="intro-title">
+      <h1 id="intro-title" class="intro__title">売上表や名簿のCSVを、<br class="sp-only">ボタンひとつで整える</h1>
+      <p class="intro__lead">表記ゆれ（全角・半角、日付の書き方）や重複した行を直して、Excelでそのまま開けるCSV（UTF-8 BOM付き）でダウンロードできます。</p>
+      <ol class="flow" aria-label="使い方">
+        <li class="flow__item"><span class="flow__num">1</span>CSVを読み込む</li>
+        <li class="flow__item"><span class="flow__num">2</span>整え方を選ぶ</li>
+        <li class="flow__item"><span class="flow__num">3</span>結果を確認してダウンロード</li>
+      </ol>
+    </section>
+
+    <!-- ===== Step 1 ===== -->
+    <section class="card" aria-labelledby="step1-title">
+      <h2 id="step1-title" class="card__title"><span class="card__step">STEP 1</span>CSVを読み込む</h2>
+      <label class="dropzone" id="dropzone" for="file-input">
+        <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0l-4 4m4-4l4 4M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="dropzone__main">ここにCSVファイルをドラッグ、またはクリックして選択</span>
+        <span class="dropzone__sub">UTF-8 / Shift_JIS（Excelで保存したCSV）どちらも読み込めます</span>
+        <input class="visually-hidden" type="file" id="file-input" accept=".csv,text/csv">
+      </label>
+      <div class="sample-buttons">
+        <span class="sample-buttons__label">お試し用（架空のデータ）:</span>
+        <button class="btn btn--ghost" type="button" data-sample="sales">売上表のサンプル</button>
+        <button class="btn btn--ghost" type="button" data-sample="members">名簿のサンプル</button>
+      </div>
+      <p class="status" id="load-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- ===== Step 2 ===== -->
+    <section class="card" id="options" aria-labelledby="step2-title" hidden>
+      <h2 id="step2-title" class="card__title"><span class="card__step">STEP 2</span>整え方を選ぶ</h2>
+
+      <div class="options">
+        <fieldset class="group">
+          <legend class="group__title">列の並び順と出力する列</legend>
+          <p class="group__help">チェックを外した列は出力しません。矢印ボタンで順番を入れ替えられます。</p>
+          <ul class="columns" id="column-list"></ul>
+        </fieldset>
+
+        <div class="options__side">
+          <fieldset class="group">
+            <legend class="group__title">文字の統一</legend>
+            <label class="check"><input type="checkbox" id="opt-halfwidth" checked> 英数字・記号を半角にする（１２３ → 123）</label>
+            <label class="check"><input type="checkbox" id="opt-fullkana" checked> 半角カナを全角にする（ｶﾅ → カナ）</label>
+            <label class="check"><input type="checkbox" id="opt-trim" checked> 前後の空白と連続した空白を整理する</label>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend class="group__title">日付の形式</legend>
+            <p class="group__help">日付の列は自動で選んでいます。和暦（令和8年1月5日・R8.1.5）や 20260105 も読み取ります。</p>
+            <div id="date-columns" class="chips"></div>
+            <label class="field">
+              <span class="field__label">そろえる形式</span>
+              <select id="opt-dateformat" class="select">
+                <option value="yyyy/MM/dd">2026/01/05</option>
+                <option value="yyyy-MM-dd">2026-01-05</option>
+                <option value="yyyy年M月d日">2026年1月5日</option>
+              </select>
+            </label>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend class="group__title">重複した行</legend>
+            <label class="radio"><input type="radio" name="dedupe" value="none"> 削除しない</label>
+            <label class="radio"><input type="radio" name="dedupe" value="row" checked> すべての列が同じ行を削除する</label>
+            <label class="radio"><input type="radio" name="dedupe" value="keys"> 選んだ列が同じ行を削除する</label>
+            <div id="dedupe-keys" class="chips" hidden></div>
+            <p class="group__help">文字の統一をしたあとの値で比べ、最初に出てきた行を残します。</p>
+          </fieldset>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Step 3 ===== -->
+    <section class="card" id="result" aria-labelledby="step3-title" hidden>
+      <h2 id="step3-title" class="card__title"><span class="card__step">STEP 3</span>結果を確認してダウンロード</h2>
+      <ul class="stats" id="stats"></ul>
+      <div id="date-errors" class="notice" hidden></div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="整形後のデータ（先頭20行）">
+        <table class="table" id="preview"></table>
+      </div>
+      <p class="table-note" id="preview-note"></p>
+      <div class="actions">
+        <label class="field field--inline">
+          <span class="field__label">ファイル名</span>
+          <input type="text" id="file-name" class="input" value="整形済み.csv">
+        </label>
+        <button class="btn btn--primary" type="button" id="download">CSVをダウンロード（Excel対応）</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>このページはポートフォリオ用のサンプルです。サンプルデータの名前・会社・連絡先はすべて架空です。</p>
+      <p>同じ処理を Google スプレッドシートで行う GAS 版もあります（gas フォルダ）。</p>
+    </div>
+  </footer>
+
+  <script src="js/sample-data.js"></script>
+  <script src="js/csv-core.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
